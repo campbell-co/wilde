@@ -52,8 +52,8 @@ export function fmtDateShort(isoDate: string | Date): string {
   return `${dow} ${mon} ${day}`;
 }
 
-export function fmtTimestampParts(ts: string, tz: string = 'America/Chicago') {
-  const d = new Date(ts);
+export function fmtTimestampParts(ts: string | Date, tz: string = 'America/Chicago') {
+  const d = ts instanceof Date ? ts : new Date(ts);
   const opts: Intl.DateTimeFormatOptions = {
     timeZone: tz,
     weekday: 'short',
@@ -65,8 +65,8 @@ export function fmtTimestampParts(ts: string, tz: string = 'America/Chicago') {
   return new Intl.DateTimeFormat('en-US', opts).format(d).toLowerCase();
 }
 
-export function fmtTime(ts: string, tz: string = 'America/Chicago') {
-  const d = new Date(ts);
+export function fmtTime(ts: string | Date, tz: string = 'America/Chicago') {
+  const d = ts instanceof Date ? ts : new Date(ts);
   return new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
     hour: 'numeric',
@@ -74,8 +74,8 @@ export function fmtTime(ts: string, tz: string = 'America/Chicago') {
   }).format(d);
 }
 
-export function fmtDate(ts: string, tz: string = 'America/Chicago') {
-  const d = new Date(ts);
+export function fmtDate(ts: string | Date, tz: string = 'America/Chicago') {
+  const d = ts instanceof Date ? ts : new Date(ts);
   return new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
     weekday: 'short',
@@ -84,8 +84,9 @@ export function fmtDate(ts: string, tz: string = 'America/Chicago') {
   }).format(d).toLowerCase();
 }
 
-export function countdownTo(target: string) {
-  const ms = new Date(target).getTime() - Date.now();
+export function countdownTo(target: string | Date) {
+  const targetTime = target instanceof Date ? target.getTime() : new Date(target).getTime();
+  const ms = targetTime - Date.now();
   if (ms <= 0) return { days: 0, hours: 0, minutes: 0, past: true };
   const days = Math.floor(ms / (1000 * 60 * 60 * 24));
   const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));

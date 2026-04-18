@@ -105,12 +105,35 @@ export type EmergencyContact = {
 
 // --- READ ---
 
+// Normalize a DATE column to a YYYY-MM-DD string.
+function normalizeDate(v: string | Date | null): string | null {
+  if (v === null || v === undefined) return null;
+  if (v instanceof Date) {
+    const y = v.getUTCFullYear();
+    const m = String(v.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(v.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(v).slice(0, 10);
+}
+
+// Normalize a TIMESTAMPTZ column to an ISO 8601 string.
+function normalizeTs(v: string | Date | null): string | null {
+  if (v === null || v === undefined) return null;
+  if (v instanceof Date) return v.toISOString();
+  return String(v);
+}
+
 export async function getFlights(family: string) {
   const { rows } = await sql<Flight>`
     SELECT * FROM flights WHERE family = ${family}
     ORDER BY depart_at ASC, sort_order ASC
   `;
-  return rows;
+  return rows.map((r) => ({
+    ...r,
+    depart_at: normalizeTs(r.depart_at as unknown as string | Date) as string,
+    arrive_at: normalizeTs(r.arrive_at as unknown as string | Date) as string,
+  }));
 }
 
 export async function getHotels(family: string) {
@@ -120,8 +143,8 @@ export async function getHotels(family: string) {
   `;
   return rows.map((r) => ({
     ...r,
-    check_in: r.check_in ? normalizeDate(r.check_in as unknown as string | Date) : null,
-    check_out: r.check_out ? normalizeDate(r.check_out as unknown as string | Date) : null,
+    check_in: normalizeDate(r.check_in as unknown as string | Date | null),
+    check_out: normalizeDate(r.check_out as unknown as string | Date | null),
   }));
 }
 
@@ -130,43 +153,42 @@ export async function getCars(family: string) {
     SELECT * FROM cars WHERE family = ${family}
     ORDER BY pickup_at ASC NULLS LAST, sort_order ASC
   `;
-  return rows;
+  return rows.map((r) => ({
+    ...r,
+    pickup_at: normalizeTs(r.pickup_at as unknown as string | Date | null),
+    return_at: normalizeTs(r.return_at as unknown as string | Date | null),
+  }));
 }
 
 export async function getTrains() {
   const { rows } = await sql<Train>`
     SELECT * FROM trains ORDER BY depart_at ASC, sort_order ASC
   `;
-  return rows;
+  return rows.map((r) => ({
+    ...r,
+    depart_at: normalizeTs(r.depart_at as unknown as string | Date) as string,
+    arrive_at: normalizeTs(r.arrive_at as unknown as string | Date) as string,
+  }));
 }
 
 export async function getDinners() {
   const { rows } = await sql<Dinner>`
     SELECT * FROM dinners ORDER BY reservation_at ASC, sort_order ASC
   `;
-  return rows;
+  return rows.map((r) => ({
+    ...r,
+    reservation_at: normalizeTs(r.reservation_at as unknown as string | Date) as string,
+  }));
 }
 
 export async function getItineraryDays() {
   const { rows } = await sql<ItineraryDay>`
     SELECT * FROM itinerary_days ORDER BY date ASC
   `;
-  // Neon returns DATE columns as JS Date objects. Normalize to YYYY-MM-DD strings
-  // so the rest of the app can just do string comparisons.
   return rows.map((r) => ({
     ...r,
-    date: normalizeDate(r.date as unknown as string | Date),
+    date: normalizeDate(r.date as unknown as string | Date) as string,
   }));
-}
-
-function normalizeDate(v: string | Date): string {
-  if (v instanceof Date) {
-    const y = v.getUTCFullYear();
-    const m = String(v.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(v.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  return String(v).slice(0, 10);
 }
 
 export async function getItineraryItems() {
@@ -209,7 +231,13 @@ export async function getNextFlight(family: string) {
     ORDER BY depart_at ASC
     LIMIT 1
   `;
-  return rows[0] ?? null;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    ...r,
+    depart_at: normalizeTs(r.depart_at as unknown as string | Date) as string,
+    arrive_at: normalizeTs(r.arrive_at as unknown as string | Date) as string,
+  };
 }
 
 // --- WRITE: itinerary ---
