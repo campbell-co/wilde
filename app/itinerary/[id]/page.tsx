@@ -15,11 +15,17 @@ export default async function DayEditPage({ params }: { params: Promise<{ id: st
   const dayId = Number(id);
   if (!dayId) notFound();
 
-  const { rows } = await sql<{ id: number; date: string; title: string | null; notes: string | null }>`
+  const { rows } = await sql<{ id: number; date: string | Date; title: string | null; notes: string | null }>`
     SELECT * FROM itinerary_days WHERE id = ${dayId}
   `;
-  const day = rows[0];
-  if (!day) notFound();
+  const dayRaw = rows[0];
+  if (!dayRaw) notFound();
+
+  // Normalize the DATE column — Neon returns it as a JS Date
+  const dateStr = dayRaw.date instanceof Date
+    ? `${dayRaw.date.getUTCFullYear()}-${String(dayRaw.date.getUTCMonth() + 1).padStart(2, '0')}-${String(dayRaw.date.getUTCDate()).padStart(2, '0')}`
+    : String(dayRaw.date).slice(0, 10);
+  const day = { ...dayRaw, date: dateStr };
 
   const allItems = await getItineraryItems();
   const items = allItems.filter((i) => i.day_id === dayId);
